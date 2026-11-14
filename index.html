@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AEGIS-7 // Space Flight Medical Command Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { display: ['Orbitron','sans-serif'], mono: ['Share Tech Mono','monospace'], sans: ['Rajdhani','sans-serif'] } } } };
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+:root{
+  --c:#00f0ff; --m:#ff2bd6; --y:#fcee0a; --g:#39ff88; --r:#ff3366; --p:#a855f7;
+  --bg:#05020d; --panel:rgba(14,8,32,.82);
+}
+*{box-sizing:border-box}
+body{
+  font-family:'Rajdhani',sans-serif; color:#d6e4ff; background:var(--bg); min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgba(255,43,214,.18), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(0,240,255,.16), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34zM28 100L0 84V66l28-16 28 16v18z' fill='none' stroke='%2300f0ff' stroke-opacity='.07'/%3E%3C/svg%3E"),
+    linear-gradient(rgba(255,43,214,.025) 1px, transparent 1px);
+  background-size:auto, auto, 56px 100px, 100% 4px;
+  background-attachment:fixed;
+}
+/* scanlines + vignette */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:60;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);mix-blend-mode:multiply}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:59;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.65) 100%)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#0a0518}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--c),var(--m));border-radius:3px}
+
+.font-display{letter-spacing:.12em}
+.hud{
+  --a:var(--c); position:relative; background:var(--panel); backdrop-filter:blur(10px);
+  border:1px solid color-mix(in srgb, var(--a) 35%, transparent);
+  clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+  box-shadow:inset 0 0 30px color-mix(in srgb, var(--a) 8%, transparent);
+}
+.hud::before,.hud::after{content:"";position:absolute;width:22px;height:22px;pointer-events:none;border:2px solid var(--a)}
+.hud::before{top:0;left:0;border-right:0;border-bottom:0}
+.hud::after{bottom:0;right:0;border-left:0;border-top:0}
+.hud-top{border-top:2px solid var(--a)}
+.lbl{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#8b7fb8}
+.mono{font-family:'Share Tech Mono',monospace}
+.disp{font-family:'Orbitron',sans-serif;letter-spacing:.08em}
+.chip{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.1em;padding:2px 8px;border:1px solid color-mix(in srgb,var(--a,var(--c)) 50%,transparent);color:var(--a,var(--c));background:color-mix(in srgb,var(--a,var(--c)) 10%,transparent);clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
+.btn{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:.08em;padding:6px 12px;color:var(--a,var(--c));border:1px solid color-mix(in srgb,var(--a,var(--c)) 55%,transparent);background:color-mix(in srgb,var(--a,var(--c)) 10%,transparent);transition:.2s;display:inline-flex;align-items:center;gap:6px;
+  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.btn:hover{background:color-mix(in srgb,var(--a,var(--c)) 28%,transparent);box-shadow:0 0 18px color-mix(in srgb,var(--a,var(--c)) 50%,transparent);color:#fff}
+.speed-btn{font-family:'Share Tech Mono',monospace;padding:2px 9px;color:#8b7fb8;border:1px solid transparent}
+.speed-btn:hover{color:#fff}.speed-btn.active{color:#fff;border-color:var(--c);background:rgba(0,240,255,.2);box-shadow:0 0 10px rgba(0,240,255,.5)}
+.field{background:#08041a;border:1px solid rgba(0,240,255,.3);color:#fff;padding:7px 10px;outline:none;font-family:'Share Tech Mono',monospace;font-size:12px}
+.field:focus{border-color:var(--m);box-shadow:0 0 12px rgba(255,43,214,.4)}
+.glow-c{text-shadow:0 0 10px var(--c)}.glow-m{text-shadow:0 0 10px var(--m)}.glow-r{text-shadow:0 0 10px var(--r)}
+.bar{height:8px;background:#0a0518;border:1px solid rgba(255,255,255,.08);overflow:hidden;
+  background-image:repeating-linear-gradient(90deg,transparent 0 6px,rgba(0,0,0,.6) 6px 8px)}
+.bar>div{height:100%;transition:width .5s;box-shadow:0 0 12px currentColor}
+.sub{background:rgba(8,4,26,.8);border:1px solid rgba(255,255,255,.07);transition:.2s}
+.sub:hover{border-color:var(--c);box-shadow:0 0 14px rgba(0,240,255,.2)}
+.glitch{position:relative;animation:glitch 6s infinite}
+@keyframes glitch{0%,92%,100%{text-shadow:0 0 10px var(--c);transform:none}93%{text-shadow:-3px 0 var(--m),3px 0 var(--c);transform:translateX(2px)}95%{text-shadow:3px 0 var(--m),-3px 0 var(--c);transform:translateX(-2px)}97%{transform:none}}
+.hazard{background:repeating-linear-gradient(-45deg,var(--y) 0 10px,#000 10px 20px);height:5px}
+.sweep{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(0,240,255,.12),transparent);transform:translateX(-100%);animation:sweep 5s linear infinite}
+@keyframes sweep{to{transform:translateX(100%)}}
+</style>
+</head>
+<body class="flex flex-col justify-between selection:bg-fuchsia-500 selection:text-black">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-40 px-4 py-3 bg-[#07031a]/90 backdrop-blur-md border-b border-cyan-400/30 relative">
+  <div class="hazard absolute left-0 right-0 top-0 opacity-80"></div>
+  <div class="max-w-[1920px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-4 pt-1">
+    <div class="flex items-center gap-4 w-full xl:w-auto justify-between xl:justify-start flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="hud w-12 h-12 flex items-center justify-center" style="--a:var(--m)">
+          <i data-lucide="shield-alert" class="w-6 h-6 text-fuchsia-400 animate-pulse"></i>
+        </div>
+        <div>
+          <h1 class="disp font-black text-white text-xl flex items-center gap-2 flex-wrap">
+            <span class="glitch">AEGIS-7</span>
+            <span class="chip" style="--a:var(--m)">MEDICAL COMMAND v4.2</span>
+          </h1>
+          <p class="lbl mt-0.5">MISSION: ARTEMIS IV // DEEP SPACE ORBITAL HEALTH</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 px-3 py-1.5 border border-emerald-400/40 bg-emerald-400/10">
+        <span class="relative flex h-3 w-3">
+          <span id="status-ping-ring" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span id="status-ping-dot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+        </span>
+        <span id="status-text" class="text-xs mono text-emerald-400 font-bold tracking-wide">AUTONOMOUS ENGINE ACTIVE</span>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-end">
+      <div class="flex items-center gap-1 p-1 border border-white/10 bg-black/30 mono text-xs">
+        <button id="btn-toggle-engine" class="btn"><i data-lucide="pause" class="w-3.5 h-3.5" id="icon-engine-toggle"></i><span id="label-engine-toggle">PAUSE ENGINE</span></button>
+        <span class="lbl px-2 flex items-center gap-1"><i data-lucide="gauge" class="w-3 h-3"></i>SIM</span>
+        <button onclick="setSpeed(1)" class="speed-btn active">1x</button>
+        <button onclick="setSpeed(2)" class="speed-btn">2x</button>
+        <button onclick="setSpeed(5)" class="speed-btn">5x</button>
+      </div>
+      <div class="flex items-center gap-2 p-1 border border-white/10 bg-black/30 mono text-xs">
+        <span class="lbl px-2 flex items-center gap-1"><i data-lucide="users" class="w-3.5 h-3.5 text-cyan-400"></i>CREW</span>
+        <select id="crew-select" class="field">
+          <option value="alex">CDR Alex Vance (Commander)</option>
+          <option value="elena">PLT Elena Rostova (Pilot)</option>
+          <option value="kenji">SPC Kenji Sato (Medical)</option>
+        </select>
+        <button onclick="openAddCrewModal()" class="btn" style="--a:var(--g)"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i>ADD</button>
+      </div>
+      <button onclick="toggleAudioMute()" id="btn-audio-mute" class="btn" style="--a:var(--y)">
+        <i data-lucide="volume-2" class="w-3.5 h-3.5" id="icon-audio-mute"></i><span id="label-audio-mute">AUDIO ACTIVE</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1920px] mx-auto p-4 md:p-6 w-full grow flex flex-col gap-6">
+
+  <!-- STATUS ROW -->
+  <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-4">
+    <div class="hud hud-top p-4 overflow-hidden" style="--a:var(--c)">
+      <div class="sweep"></div>
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-3 min-w-0">
+          <i data-lucide="timer" class="w-7 h-7 text-cyan-300 shrink-0"></i>
+          <div class="min-w-0"><div class="lbl">Mission Elapsed Time</div>
+            <div id="clock-met" class="disp text-lg font-bold text-white glow-c whitespace-nowrap">T+059:07:00:40</div></div>
+        </div>
+        <span class="chip shrink-0">SOL 42</span>
+      </div>
+    </div>
+
+    <div class="hud hud-top p-4" style="--a:var(--g)">
+      <div class="flex items-start justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-3">
+          <i data-lucide="cpu" class="w-7 h-7 text-emerald-300 shrink-0"></i>
+          <div><div class="lbl">AI Anomaly Status</div>
+            <div id="ai-status-text" class="disp text-base font-bold text-emerald-400">NOMINAL (Z-Score: 0.12)</div></div>
+        </div>
+        <span id="ai-status-tag" class="chip" style="--a:var(--g)">ISOLATION FOREST SAFE</span>
+      </div>
+    </div>
+
+    <div class="hud hud-top p-4" style="--a:var(--y)">
+      <div class="flex items-start justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-3">
+          <i data-lucide="satellite-dish" class="w-7 h-7 text-yellow-300 shrink-0"></i>
+          <div><div class="lbl">DSN Earth Sync Latency</div>
+            <div class="disp text-base font-bold text-yellow-300">1,248 ms <span class="mono text-xs font-normal text-slate-400">(Lunar Relay)</span></div></div>
+        </div>
+        <span class="chip" style="--a:var(--y)">EDGE LOCAL BUFF</span>
+      </div>
+    </div>
+
+    <div class="hud hud-top p-4" style="--a:var(--p)">
+      <div class="flex items-start justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-3">
+          <i data-lucide="brain-circuit" class="w-7 h-7 text-purple-300 shrink-0"></i>
+          <div><div class="lbl">Cognitive Index (PVT)</div>
+            <div id="pvt-overall-score" class="disp text-base font-bold text-purple-300">215 ms (ALERT)</div></div>
+        </div>
+        <button onclick="openPvtModal()" class="btn" style="--a:var(--p)"><i data-lucide="play" class="w-3 h-3"></i>RUN TEST</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERT BANNER -->
+  <div id="alert-banner" class="hidden hud animate-pulse p-4" style="--a:var(--r);background:rgba(255,51,102,.15);box-shadow:0 0 40px rgba(255,51,102,.4)">
+    <div class="hazard absolute top-0 left-0 right-0"></div>
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-2">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 border border-rose-500 bg-rose-500/20 flex items-center justify-center shrink-0"><i data-lucide="triangle-alert" class="w-8 h-8 text-rose-400 animate-bounce"></i></div>
+        <div>
+          <h4 id="alert-title" class="disp font-bold text-rose-400 text-lg glow-r">CRITICAL WARNING: EVA HYPOXIA RISK DETECTED</h4>
+          <p id="alert-desc" class="text-sm mono text-slate-200 mt-0.5">SpO2 levels dropped below threshold (88.0%).</p>
+          <div id="alert-checklist" class="mt-2 text-xs mono text-rose-300 flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+      <button onclick="acknowledgeAlert()" class="btn shrink-0" style="--a:var(--r);padding:12px 20px;font-weight:bold"><i data-lucide="shield-check" class="w-4 h-4"></i>ACKNOWLEDGE &amp; MITIGATE</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT -->
+    <div class="lg:col-span-4 flex flex-col gap-6">
+
+      <!-- Crew card -->
+      <div class="hud hud-top p-5 overflow-hidden" style="--a:var(--m)">
+        <div class="absolute -right-6 -top-6 opacity-10 pointer-events-none"><i data-lucide="hexagon" class="w-36 h-36 text-fuchsia-400 animate-[spin_14s_linear_infinite]"></i></div>
+        <div class="flex items-center gap-4 mb-4 relative z-10">
+          <div class="relative w-20 h-20 shrink-0 p-[3px]" style="clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:linear-gradient(135deg,var(--c),var(--m))">
+            <img id="crew-avatar-img" src="https://images.unsplash.com/photo-1541873676-a18131494184?auto=format&fit=crop&w=150&q=80" alt="Crew" class="w-full h-full object-cover" style="clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)">
+          </div>
+          <div class="min-w-0">
+            <div class="lbl flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>BIOMETRICS SYNC</div>
+            <h3 id="crew-name" class="disp font-bold text-white text-xl glow-m truncate">CDR Alex Vance</h3>
+            <p id="crew-role" class="mono text-xs text-cyan-400">Commander // EVA Specialist</p>
+            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span class="chip" style="--a:var(--c)"><i data-lucide="shirt" class="w-3 h-3 inline"></i> Mark-IV</span>
+              <span class="chip" style="--a:var(--g)"><i data-lucide="check-circle-2" class="w-3 h-3 inline"></i> Fit: 98%</span>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5 pt-3 border-t border-white/10 relative z-10 mono text-xs">
+          <div class="sub p-2.5 flex items-center gap-2"><i data-lucide="fingerprint" class="w-5 h-5 text-slate-400"></i><div><div class="lbl">AGE/GEN</div><div id="crew-age" class="text-slate-100 font-semibold text-sm">38 / M</div></div></div>
+          <div class="sub p-2.5 flex items-center gap-2"><i data-lucide="moon" class="w-5 h-5 text-emerald-400"></i><div><div class="lbl">SLEEP 24H</div><div id="crew-sleep" class="text-emerald-400 font-semibold text-sm">7.4 hrs</div></div></div>
+          <div class="sub p-2.5 flex items-center gap-2"><i data-lucide="wind" class="w-5 h-5 text-cyan-400"></i><div><div class="lbl">VO2 MAX</div><div id="crew-vo2" class="text-cyan-400 font-semibold text-sm">54.2 mL/kg</div></div></div>
+          <div class="sub p-2.5 flex items-center gap-2"><i data-lucide="flame" class="w-5 h-5 text-amber-400"></i><div><div class="lbl">CALORIES</div><div id="crew-cal" class="text-amber-400 font-semibold text-sm">2,410 kcal</div></div></div>
+        </div>
+      </div>
+
+      <!-- Scenario deck -->
+      <div class="hud p-5 flex flex-col gap-4" style="--a:var(--r)">
+        <div class="flex items-center justify-between">
+          <h3 class="disp font-bold text-rose-400 text-sm flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4"></i>SIMULATE SCENARIO</h3>
+          <span class="chip" style="--a:var(--r)">MANUAL OVERRIDE</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="triggerScenario('hypoxia')" class="btn justify-between" style="--a:var(--r)"><span class="flex items-center gap-1.5"><i data-lucide="wind" class="w-3.5 h-3.5"></i>EVA Hypoxia</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+          <button onclick="triggerScenario('cardiac')" class="btn justify-between" style="--a:var(--p)"><span class="flex items-center gap-1.5"><i data-lucide="heart-pulse" class="w-3.5 h-3.5"></i>Tachycardia</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+          <button onclick="triggerScenario('radiation')" class="btn justify-between" style="--a:var(--y)"><span class="flex items-center gap-1.5"><i data-lucide="sun" class="w-3.5 h-3.5"></i>Solar Flare</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+          <button onclick="triggerScenario('co2_leak')" class="btn justify-between" style="--a:var(--g)"><span class="flex items-center gap-1.5"><i data-lucide="biohazard" class="w-3.5 h-3.5"></i>CO2 Leak</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <button onclick="resetScenario()" class="btn w-full justify-center" style="--a:#9aa4c7"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>RESET NOMINAL STATE</button>
+        <div class="pt-3 border-t border-white/10 space-y-4 mono text-xs">
+          <div>
+            <div class="flex justify-between lbl mb-1"><span class="flex items-center gap-1"><i data-lucide="dumbbell" class="w-3 h-3"></i>Workload / Exercise</span><span id="label-workload" class="text-cyan-400 font-bold">MODERATE (50%)</span></div>
+            <input type="range" id="slider-workload" min="0" max="100" value="50" oninput="updateSliders()" class="w-full accent-cyan-400">
+          </div>
+          <div>
+            <div class="flex justify-between lbl mb-1"><span class="flex items-center gap-1"><i data-lucide="flame-kindling" class="w-3 h-3"></i>Cabin Stress Factor</span><span id="label-stress" class="text-amber-400 font-bold">LOW (10%)</span></div>
+            <input type="range" id="slider-stress" min="0" max="100" value="10" oninput="updateSliders()" class="w-full accent-fuchsia-500">
+          </div>
+        </div>
+      </div>
+
+      <!-- Microgravity -->
+      <div class="hud hud-top p-5 flex flex-col gap-4" style="--a:var(--g)">
+        <h3 class="disp font-bold text-emerald-400 text-sm flex items-center gap-2"><i data-lucide="orbit" class="w-4 h-4"></i>MICROGRAVITY &amp; SANS</h3>
+        <div class="space-y-4 mono text-xs">
+          <div>
+            <div class="flex justify-between mb-1"><span class="lbl flex items-center gap-1"><i data-lucide="bone" class="w-3 h-3"></i>Muscle Atrophy Risk</span><span id="val-atrophy" class="text-emerald-400 font-bold">12% (LOW)</span></div>
+            <div class="bar"><div id="bar-atrophy" class="bg-emerald-400 text-emerald-400" style="width:12%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1"><span class="lbl flex items-center gap-1"><i data-lucide="eye" class="w-3 h-3"></i>Intraocular Pressure</span><span id="val-iop" class="text-cyan-400 font-bold">16.8 mmHg</span></div>
+            <div class="bar"><div id="bar-iop" class="bg-cyan-400 text-cyan-400" style="width:45%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1"><span class="lbl flex items-center gap-1"><i data-lucide="radiation" class="w-3 h-3"></i>Cumulative Radiation</span><span id="val-rad-cumul" class="text-amber-400 font-bold">48.2 / 600 mSv</span></div>
+            <div class="bar"><div id="bar-rad-cumul" class="bg-amber-400 text-amber-400" style="width:8%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="lg:col-span-8 flex flex-col gap-6">
+
+      <!-- Gauges -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div class="hud hud-top p-3 flex flex-col justify-between" style="--a:var(--r)">
+          <div class="flex justify-between items-center lbl"><span>Heart Rate</span><i data-lucide="heart-pulse" class="w-4 h-4 text-rose-400 animate-pulse"></i></div>
+          <div class="my-2"><span id="gauge-hr" class="disp text-3xl font-bold text-white glow-r">74</span> <span class="mono text-xs text-slate-400">BPM</span></div>
+          <div id="status-hr" class="mono text-[10px] text-emerald-400">NOMINAL</div>
+        </div>
+        <div class="hud hud-top p-3 flex flex-col justify-between" style="--a:var(--c)">
+          <div class="flex justify-between items-center lbl"><span>Oxygen SpO2</span><i data-lucide="wind" class="w-4 h-4 text-cyan-400"></i></div>
+          <div class="my-2"><span id="gauge-spo2" class="disp text-3xl font-bold text-white glow-c">98.5</span> <span class="mono text-xs text-slate-400">%</span></div>
+          <div id="status-spo2" class="mono text-[10px] text-emerald-400">NOMINAL</div>
+        </div>
+        <div class="hud hud-top p-3 flex flex-col justify-between" style="--a:var(--p)">
+          <div class="flex justify-between items-center lbl"><span>Blood Press.</span><i data-lucide="droplets" class="w-4 h-4 text-purple-400"></i></div>
+          <div class="my-2"><span id="gauge-bp" class="disp text-2xl font-bold text-white">118/78</span> <span class="mono text-xs text-slate-400">mmHg</span></div>
+          <div id="status-bp" class="mono text-[10px] text-emerald-400">MAP: 91</div>
+        </div>
+        <div class="hud hud-top p-3 flex flex-col justify-between" style="--a:#ff8a00">
+          <div class="flex justify-between items-center lbl"><span>Core Temp</span><i data-lucide="thermometer" class="w-4 h-4 text-orange-400"></i></div>
+          <div class="my-2"><span id="gauge-temp" class="disp text-3xl font-bold text-white">36.8</span> <span class="mono text-xs text-slate-400">°C</span></div>
+          <div id="status-temp" class="mono text-[10px] text-emerald-400">NOMINAL</div>
+        </div>
+        <div class="hud hud-top p-3 flex flex-col justify-between" style="--a:var(--y)">
+          <div class="flex justify-between items-center lbl"><span>Cabin CO2</span><i data-lucide="cloud-fog" class="w-4 h-4 text-yellow-300"></i></div>
+          <div class="my-2"><span id="gauge-co2" class="disp text-3xl font-bold text-white">0.42</span> <span class="mono text-xs text-slate-400">%</span></div>
+          <div id="status-co2" class="mono text-[10px] text-emerald-400">NOMINAL</div>
+        </div>
+        <div class="hud hud-top p-3 flex flex-col justify-between" style="--a:var(--m)">
+          <div class="flex justify-between items-center lbl"><span>Rad Rate</span><i data-lucide="radiation" class="w-4 h-4 text-fuchsia-400"></i></div>
+          <div class="my-2"><span id="gauge-rad" class="disp text-3xl font-bold text-white glow-m">12.4</span> <span class="mono text-xs text-slate-400">µSv/h</span></div>
+          <div id="status-rad" class="mono text-[10px] text-emerald-400">BACKGROUND</div>
+        </div>
+      </div>
+
+      <!-- Waveforms -->
+      <div class="hud p-5 flex flex-col gap-5" style="--a:var(--c)">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+          <div>
+            <h3 class="disp font-bold text-white text-base flex items-center gap-2"><i data-lucide="audio-waveform" class="w-5 h-5 text-cyan-300"></i>REAL-TIME TELEMETRY WAVEFORMS</h3>
+            <p class="lbl mt-1">30s rolling buffer // edge ML telemetry stream</p>
+          </div>
+          <div class="flex items-center gap-4 mono text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-rose-500 shadow-[0_0_8px_#ff3366]"></span>HR</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>SpO2</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-yellow-400 shadow-[0_0_8px_#fcee0a]"></span>CO2</span>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mono text-xs mb-1 text-slate-400"><span class="lbl">Heart rate monitor (ECG)</span><span id="chart-val-hr" class="text-rose-400 font-bold">74 BPM</span></div>
+          <div class="relative w-full h-24 bg-black/60 border border-rose-500/20 overflow-hidden"><canvas id="canvas-hr" class="w-full h-full"></canvas></div>
+        </div>
+        <div>
+          <div class="flex justify-between mono text-xs mb-1 text-slate-400"><span class="lbl">Blood oxygen saturation</span><span id="chart-val-spo2" class="text-cyan-400 font-bold">98.5 %</span></div>
+          <div class="relative w-full h-20 bg-black/60 border border-cyan-500/20 overflow-hidden"><canvas id="canvas-spo2" class="w-full h-full"></canvas></div>
+        </div>
+        <div>
+          <div class="flex justify-between mono text-xs mb-1 text-slate-400"><span class="lbl">Cabin CO2 concentration</span><span id="chart-val-co2" class="text-yellow-400 font-bold">0.42 %</span></div>
+          <div class="relative w-full h-20 bg-black/60 border border-yellow-500/20 overflow-hidden"><canvas id="canvas-co2" class="w-full h-full"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="hud hud-top p-5 flex flex-col gap-3" style="--a:var(--p)">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h3 class="disp font-bold text-white text-sm flex items-center gap-2"><i data-lucide="terminal" class="w-4 h-4 text-purple-400"></i>AUTONOMOUS INCIDENT &amp; TELEMETRY LOG</h3>
+          <div class="flex items-center gap-2">
+            <button onclick="exportCSV()" class="btn" style="--a:var(--g)"><i data-lucide="download" class="w-3.5 h-3.5"></i>EXPORT CSV</button>
+            <button onclick="clearLogs()" class="btn" style="--a:#9aa4c7"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>CLEAR</button>
+          </div>
+        </div>
+        <div id="log-console" class="h-36 bg-black/70 p-3 border border-purple-500/20 overflow-y-auto mono text-[11px] space-y-1 text-slate-300"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- PVT MODAL -->
+<div id="pvt-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[70] hidden flex items-center justify-center p-4">
+  <div class="hud w-full max-w-lg p-6 flex flex-col gap-4 text-center" style="--a:var(--p)">
+    <div class="flex justify-between items-center border-b border-white/10 pb-3">
+      <h3 class="disp font-bold text-purple-300 text-sm flex items-center gap-2"><i data-lucide="brain-circuit" class="w-5 h-5"></i>PSYCHOMOTOR VIGILANCE TEST</h3>
+      <button onclick="closePvtModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <p class="text-sm mono text-slate-300">Click the target as FAST as possible the instant it turns <span class="text-emerald-400 font-bold">GREEN</span>.</p>
+    <div id="pvt-box" onclick="handlePvtClick()" class="w-full h-40 bg-[#08041a] border-2 border-slate-700 flex flex-col items-center justify-center cursor-pointer select-none transition-all">
+      <span id="pvt-prompt" class="disp font-bold text-slate-400 text-sm">CLICK HERE TO START TEST</span>
+      <span id="pvt-result" class="disp font-bold text-2xl text-white mt-2"></span>
+    </div>
+    <div class="lbl">Average cognitive response target: <span class="text-cyan-400">&lt; 240 ms</span></div>
+  </div>
+</div>
+
+<!-- ADD CREW MODAL -->
+<div id="add-crew-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[70] hidden flex items-center justify-center p-4">
+  <div class="hud w-full max-w-lg p-6 flex flex-col gap-4" style="--a:var(--c)">
+    <div class="flex justify-between items-center border-b border-white/10 pb-3">
+      <h3 class="disp font-bold text-cyan-300 text-sm flex items-center gap-2"><i data-lucide="user-plus" class="w-5 h-5"></i>INITIALIZE NEW CREW MEMBER</h3>
+      <button onclick="closeAddCrewModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form id="add-crew-form" onsubmit="submitNewCrew(event)" class="flex flex-col gap-4 mono text-xs">
+      <div class="grid grid-cols-2 gap-4">
+        <div class="flex flex-col gap-1"><label class="lbl">Name</label><input type="text" id="new-name" required class="field" placeholder="e.g. MS J. Doe"></div>
+        <div class="flex flex-col gap-1"><label class="lbl">Role</label><input type="text" id="new-role" required class="field" placeholder="e.g. Mission Specialist"></div>
+        <div class="flex flex-col gap-1"><label class="lbl">Age</label><input type="number" id="new-age" required class="field" placeholder="e.g. 35"></div>
+        <div class="flex flex-col gap-1"><label class="lbl">Gender</label><select id="new-gender" class="field"><option value="M">M</option><option value="F">F</option><option value="X">X</option></select></div>
+        <div class="flex flex-col gap-1"><label class="lbl">Resting HR (BPM)</label><input type="number" id="new-hr" required class="field" placeholder="e.g. 70"></div>
+        <div class="flex flex-col gap-1"><label class="lbl">VO2 Max (mL/kg)</label><input type="number" step="0.1" id="new-vo2" required class="field" placeholder="e.g. 50.0"></div>
+        <div class="flex flex-col gap-1"><label class="lbl">Target Sleep (hrs)</label><input type="number" step="0.1" id="new-sleep" required class="field" placeholder="e.g. 8.0"></div>
+        <div class="flex flex-col gap-1"><label class="lbl">Base Blood Pressure</label><input type="text" id="new-bp" class="field" placeholder="e.g. 120/80"></div>
+      </div>
+      <div class="mt-2 flex justify-end gap-2">
+        <button type="button" onclick="closeAddCrewModal()" class="btn" style="--a:#9aa4c7">CANCEL</button>
+        <button type="submit" class="btn" style="--a:var(--m);padding:8px 16px;font-weight:bold"><i data-lucide="upload" class="w-4 h-4"></i>TRANSMIT DATA</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="border-t border-cyan-400/20 bg-[#05020d] px-4 py-3 text-center lbl relative">
+  <div class="hazard absolute left-0 right-0 bottom-0 opacity-60"></div>
+  AEGIS-7 SPACECRAFT TELEMETRY SYSTEM // ASTRONAUT HEALTH MONITORING HACKATHON // LOCAL EDGE AUTONOMOUS READY
+</footer>
+
+<script>
+lucide.createIcons();
+
+const CREW_DATA = {
+  alex: { name: "CDR Alex Vance", role: "Commander // EVA Lead", image: "https://images.unsplash.com/photo-1541873676-a18131494184?auto=format&fit=crop&w=150&q=80", age: "38 / M", sleep: "7.4 hrs", vo2: "54.2 mL/kg", cal: "2,410 kcal", baseHr: 74, baseSpo2: 98.5, baseTemp: 36.8, baseCo2: 0.42, baseRad: 12.4, atrophy: 12, iop: 16.8, cumulRad: 48.2 },
+  elena: { name: "PLT Elena Rostova", role: "Pilot // Systems Engineer", image: "https://images.unsplash.com/photo-1580274455171-1c280ca14eb5?auto=format&fit=crop&w=150&q=80", age: "34 / F", sleep: "6.8 hrs", vo2: "58.0 mL/kg", cal: "2,180 kcal", baseHr: 68, baseSpo2: 99.0, baseTemp: 36.6, baseCo2: 0.40, baseRad: 12.4, atrophy: 8, iop: 15.4, cumulRad: 32.1 },
+  kenji: { name: "SPC Kenji Sato", role: "Medical Specialist", image: "https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&w=150&q=80", age: "41 / M", sleep: "8.1 hrs", vo2: "51.5 mL/kg", cal: "2,550 kcal", baseHr: 62, baseSpo2: 98.8, baseTemp: 36.7, baseCo2: 0.41, baseRad: 12.4, atrophy: 15, iop: 17.2, cumulRad: 64.5 }
+};
+
+let currentCrew = 'alex', isRunning = true, simSpeed = 1, audioMuted = false, activeScenario = null, workloadFactor = 50, stressFactor = 10, audioCtx = null;
+const BUFFER_SIZE = 30;
+const hrBuffer = Array(BUFFER_SIZE).fill(74);
+const spo2Buffer = Array(BUFFER_SIZE).fill(98.5);
+const co2Buffer = Array(BUFFER_SIZE).fill(0.42);
+const logsHistory = [];
+const CHIP = 'bg-rose-950/80 px-2 py-0.5 border border-rose-500/40';
+
+function playAlarmBeep(freq = 880, duration = 0.2) {
+  if (audioMuted) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  } catch (e) { console.error("Audio synth error:", e); }
+}
+
+function toggleAudioMute() {
+  audioMuted = !audioMuted;
+  document.getElementById('label-audio-mute').innerText = audioMuted ? 'AUDIO MUTED' : 'AUDIO ACTIVE';
+  document.getElementById('icon-audio-mute').setAttribute('data-lucide', audioMuted ? 'volume-x' : 'volume-2');
+  lucide.createIcons();
+}
+
+function renderSparkline(canvasId, buffer, color, minVal, maxVal) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width; canvas.height = rect.height;
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(0,240,255,0.06)'; ctx.lineWidth = 1;
+  for (let y = 0; y < h; y += 15) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  for (let x = 0; x < w; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+
+  if (buffer.length < 2) return;
+  const stepX = w / (BUFFER_SIZE - 1);
+  const pts = buffer.map((val, i) => {
+    const normY = 1 - ((val - minVal) / (maxVal - minVal));
+    return [i * stepX, Math.max(4, Math.min(h - 4, normY * h))];
+  });
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color.replace('1)', '0.4)'));
+  grad.addColorStop(1, color.replace('1)', '0.0)'));
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.lineTo(pts[pts.length - 1][0], h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowColor = color; ctx.shadowBlur = 10; ctx.stroke();
+  ctx.shadowBlur = 0;
+  const [lx, ly] = pts[pts.length - 1];
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(lx - 3, ly, 3, 0, 7); ctx.fill();
+}
+
+function computeZScore(val, buffer) {
+  if (buffer.length < 5) return 0;
+  const mean = buffer.reduce((a, b) => a + b, 0) / buffer.length;
+  const std = Math.sqrt(buffer.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / buffer.length);
+  return std === 0 ? 0 : (val - mean) / std;
+}
+
+function stepTelemetry() {
+  if (!isRunning) return;
+  const crew = CREW_DATA[currentCrew];
+  const hrWorkloadAdd = (workloadFactor - 50) * 0.4;
+  const tempStressAdd = (stressFactor - 10) * 0.01;
+
+  let hr = crew.baseHr + hrWorkloadAdd + (Math.random() - 0.5) * 2.5;
+  let spo2 = crew.baseSpo2 + (Math.random() - 0.5) * 0.3;
+  let temp = crew.baseTemp + tempStressAdd + (Math.random() - 0.5) * 0.08;
+  let co2 = crew.baseCo2 + (Math.random() - 0.5) * 0.01;
+  let rad = crew.baseRad + (Math.random() - 0.5) * 0.3;
+  let bpSys = 118 + Math.floor(hrWorkloadAdd * 0.5) + Math.floor((Math.random() - 0.5) * 4);
+  let bpDia = 78 + Math.floor((Math.random() - 0.5) * 3);
+
+  if (activeScenario === 'hypoxia') {
+    spo2 = Math.max(81.0, spo2 - Math.random() * 2.8); hr = Math.min(152.0, hr + Math.random() * 4.5); playAlarmBeep(920, 0.15);
+  } else if (activeScenario === 'cardiac') {
+    hr = Math.min(172.0, hr + Math.random() * 6.0); bpSys = Math.min(185, bpSys + 35); playAlarmBeep(1100, 0.2);
+  } else if (activeScenario === 'radiation') {
+    rad = Math.min(145.0, rad + Math.random() * 15.0); playAlarmBeep(650, 0.1);
+  } else if (activeScenario === 'co2_leak') {
+    co2 = Math.min(1.85, co2 + Math.random() * 0.08); hr = Math.min(130.0, hr + Math.random() * 2.0); playAlarmBeep(780, 0.15);
+  }
+
+  hrBuffer.shift(); hrBuffer.push(hr);
+  spo2Buffer.shift(); spo2Buffer.push(spo2);
+  co2Buffer.shift(); co2Buffer.push(co2);
+
+  const zHr = computeZScore(hr, hrBuffer);
+  const isCritical = spo2 < 91.0 || hr > 145.0 || co2 > 1.2 || rad > 80.0 || Math.abs(zHr) > 2.8;
+
+  document.getElementById('gauge-hr').innerText = Math.round(hr);
+  document.getElementById('gauge-spo2').innerText = spo2.toFixed(1);
+  document.getElementById('gauge-bp').innerText = `${bpSys}/${bpDia}`;
+  document.getElementById('gauge-temp').innerText = temp.toFixed(1);
+  document.getElementById('gauge-co2').innerText = co2.toFixed(2);
+  document.getElementById('gauge-rad').innerText = rad.toFixed(1);
+  document.getElementById('chart-val-hr').innerText = `${Math.round(hr)} BPM`;
+  document.getElementById('chart-val-spo2').innerText = `${spo2.toFixed(1)} %`;
+  document.getElementById('chart-val-co2').innerText = `${co2.toFixed(2)} %`;
+
+  renderSparkline('canvas-hr', hrBuffer, 'rgba(255, 51, 102, 1)', 40, 180);
+  renderSparkline('canvas-spo2', spo2Buffer, 'rgba(0, 240, 255, 1)', 80, 100);
+  renderSparkline('canvas-co2', co2Buffer, 'rgba(252, 238, 10, 1)', 0.2, 2.0);
+
+  const t = document.getElementById('ai-status-text'), tag = document.getElementById('ai-status-tag');
+  if (isCritical) {
+    t.innerText = `CRITICAL (Z-Score: ${zHr.toFixed(2)})`;
+    t.className = 'disp text-base font-bold text-rose-400 glow-r';
+    tag.innerText = 'ANOMALY DETECTED';
+    tag.className = 'chip animate-pulse'; tag.style.setProperty('--a', 'var(--r)');
+  } else {
+    t.innerText = `NOMINAL (Z-Score: ${Math.abs(zHr).toFixed(2)})`;
+    t.className = 'disp text-base font-bold text-emerald-400';
+    tag.innerText = 'ISOLATION FOREST SAFE';
+    tag.className = 'chip'; tag.style.setProperty('--a', 'var(--g)');
+  }
+
+  if (isCritical || Math.random() < 0.05) {
+    logEvent(isCritical ? 'CRITICAL' : 'INFO', `HR: ${Math.round(hr)} | SpO2: ${spo2.toFixed(1)}% | CO2: ${co2.toFixed(2)}% | Z-Score: ${zHr.toFixed(2)}`);
+  }
+}
+
+function logEvent(type, text) {
+  const timestamp = new Date().toISOString().substring(11, 19);
+  const crewName = CREW_DATA[currentCrew].name;
+  logsHistory.unshift({ timestamp, crew: crewName, type, text });
+  if (logsHistory.length > 50) logsHistory.pop();
+
+  const line = document.createElement('div');
+  line.className = type === 'CRITICAL' ? 'text-rose-400 font-bold animate-pulse' : 'text-cyan-200/70';
+  line.innerText = `[${timestamp}] [${type}] ${crewName}: ${text}`;
+  document.getElementById('log-console').prepend(line);
+  localStorage.setItem('aegis7_logs', JSON.stringify(logsHistory.slice(0, 20)));
+}
+
+function clearLogs() {
+  logsHistory.length = 0;
+  document.getElementById('log-console').innerHTML = '';
+  localStorage.removeItem('aegis7_logs');
+}
+
+function exportCSV() {
+  if (logsHistory.length === 0) { alert("No mission logs recorded to export."); return; }
+  let csv = "Timestamp,Crew,Type,TelemetryText\n";
+  logsHistory.forEach(l => { csv += `"${l.timestamp}","${l.crew}","${l.type}","${l.text.replace(/"/g, '""')}"\n`; });
+  const url = window.URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `aegis7_health_telemetry_${Date.now()}.csv`; a.click();
+}
+
+function triggerScenario(type) {
+  activeScenario = type;
+  const S = {
+    hypoxia: ['CRITICAL WARNING: EVA HYPOXIA RISK DETECTED', 'SpO2 levels dropped rapidly (<88.0%). Secondary suit O2 valve obstructed.', ['1. Purge primary suit line', '2. Engage Emergency O2 Loop', '3. Abort Spacewalk Session']],
+    cardiac: ['BIOMETRIC ANOMALY: ACUTE TACHYCARDIA DETECTED', 'Crew member heart rate spike (>165 BPM) with elevated arterial systolic blood pressure.', ['1. Cease ARED Exercise Protocol', '2. Deliver 100% O2 via Flight Mask']],
+    radiation: ['ENVIRONMENTAL SPIKE: SOLAR PARTICLE EVENT (SPE)', 'Dosimeter radiation rate exceeded safe threshold (145 µSv/h). Magnetosphere shield boundary crossed.', ['1. Evacuate to Storm Shelter', '2. Deploy Polyethylene Shield Panels']],
+    co2_leak: ['ENVIRONMENTAL WARNING: CABIN CO2 SCRUBBER FAILURE', 'Cabin Carbon Dioxide concentration exceeding safe limit (>1.5%). Secondary scrubber saturated.', ['1. Toggle LiOH Canister Loop B', '2. Don Emergency Breathing Apparatus']]
+  }[type];
+  document.getElementById('alert-banner').classList.remove('hidden');
+  document.getElementById('alert-title').innerText = S[0];
+  document.getElementById('alert-desc').innerText = S[1];
+  document.getElementById('alert-checklist').innerHTML = S[2].map(s => `<span class="${CHIP}">${s}</span>`).join('');
+  logEvent('CRITICAL', `SCENARIO INJECTED: ${type.toUpperCase()}`);
+}
+
+function resetScenario() {
+  activeScenario = null;
+  document.getElementById('alert-banner').classList.add('hidden');
+  logEvent('INFO', 'System restored to nominal telemetry state.');
+}
+function acknowledgeAlert() { resetScenario(); }
+
+function updateSliders() {
+  workloadFactor = parseInt(document.getElementById('slider-workload').value);
+  stressFactor = parseInt(document.getElementById('slider-stress').value);
+  document.getElementById('label-workload').innerText =
+    workloadFactor > 75 ? `HIGH (${workloadFactor}%)` : workloadFactor > 30 ? `MODERATE (${workloadFactor}%)` : `LOW (${workloadFactor}%)`;
+  document.getElementById('label-stress').innerText =
+    stressFactor > 75 ? `CRITICAL (${stressFactor}%)` : stressFactor > 30 ? `ELEVATED (${stressFactor}%)` : `LOW (${stressFactor}%)`;
+}
+
+function setSpeed(speed) {
+  simSpeed = speed;
+  document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.toggle('active', btn.innerText === `${speed}x`));
+  restartEngineLoop();
+}
+
+document.getElementById('crew-select').addEventListener('change', (e) => {
+  currentCrew = e.target.value;
+  const crew = CREW_DATA[currentCrew];
+  document.getElementById('crew-name').innerText = crew.name;
+  document.getElementById('crew-role').innerText = crew.role;
+  document.getElementById('crew-avatar-img').src = crew.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(crew.name)}&background=0B0F19&color=00F0FF`;
+  document.getElementById('crew-age').innerText = crew.age;
+  document.getElementById('crew-sleep').innerText = crew.sleep;
+  document.getElementById('crew-vo2').innerText = crew.vo2;
+  document.getElementById('crew-cal').innerText = crew.cal;
+  document.getElementById('val-atrophy').innerText = `${crew.atrophy}% (${crew.atrophy > 10 ? 'MODERATE' : 'LOW'})`;
+  document.getElementById('bar-atrophy').style.width = `${crew.atrophy * 4}%`;
+  document.getElementById('val-iop').innerText = `${crew.iop} mmHg`;
+  document.getElementById('val-rad-cumul').innerText = `${crew.cumulRad} / 600 mSv`;
+  hrBuffer.fill(crew.baseHr); spo2Buffer.fill(crew.baseSpo2); co2Buffer.fill(crew.baseCo2);
+  resetScenario();
+});
+
+document.getElementById('btn-toggle-engine').addEventListener('click', () => {
+  isRunning = !isRunning;
+  const dot = document.getElementById('status-ping-dot'), ring = document.getElementById('status-ping-ring');
+  const text = document.getElementById('status-text');
+  if (isRunning) {
+    dot.className = 'relative inline-flex rounded-full h-3 w-3 bg-emerald-500';
+    ring.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+    text.innerText = 'AUTONOMOUS ENGINE ACTIVE';
+    text.className = 'text-xs mono text-emerald-400 font-bold tracking-wide';
+    document.getElementById('label-engine-toggle').innerText = 'PAUSE ENGINE';
+    document.getElementById('icon-engine-toggle').setAttribute('data-lucide', 'pause');
+  } else {
+    dot.className = 'relative inline-flex rounded-full h-3 w-3 bg-amber-500';
+    ring.className = 'hidden';
+    text.innerText = 'ENGINE PAUSED';
+    text.className = 'text-xs mono text-amber-400 font-bold tracking-wide';
+    document.getElementById('label-engine-toggle').innerText = 'RESUME ENGINE';
+    document.getElementById('icon-engine-toggle').setAttribute('data-lucide', 'play');
+  }
+  lucide.createIcons();
+});
+
+// PVT
+let pvtState = 'idle', pvtStartTime = 0, pvtTimer = null;
+const PVT_BASE = 'w-full h-40 flex flex-col items-center justify-center cursor-pointer select-none transition-all border-2 ';
+function openPvtModal() { document.getElementById('pvt-modal').classList.remove('hidden'); resetPvtBox(); }
+function closePvtModal() { document.getElementById('pvt-modal').classList.add('hidden'); if (pvtTimer) clearTimeout(pvtTimer); }
+function resetPvtBox() {
+  pvtState = 'idle';
+  document.getElementById('pvt-box').className = PVT_BASE + 'bg-[#08041a] border-slate-700';
+  document.getElementById('pvt-prompt').innerText = 'CLICK HERE TO START TEST';
+  document.getElementById('pvt-result').innerText = '';
+}
+function handlePvtClick() {
+  const box = document.getElementById('pvt-box'), prompt = document.getElementById('pvt-prompt'), result = document.getElementById('pvt-result');
+  if (pvtState === 'idle') {
+    pvtState = 'waiting';
+    box.className = PVT_BASE + 'bg-amber-500/10 border-amber-500';
+    prompt.innerText = 'WAIT FOR GREEN...'; result.innerText = '';
+    pvtTimer = setTimeout(() => {
+      pvtState = 'ready'; pvtStartTime = performance.now();
+      box.className = PVT_BASE + 'bg-emerald-500/20 border-emerald-400 shadow-[0_0_30px_#39ff88]';
+      prompt.innerText = 'CLICK NOW!';
+    }, 2000 + Math.random() * 3000);
+  } else if (pvtState === 'waiting') {
+    clearTimeout(pvtTimer); pvtState = 'idle';
+    box.className = PVT_BASE + 'bg-rose-500/20 border-rose-500';
+    prompt.innerText = 'TOO EARLY! FALSE START'; result.innerText = 'Click to try again';
+  } else if (pvtState === 'ready') {
+    const rt = Math.round(performance.now() - pvtStartTime);
+    pvtState = 'idle';
+    box.className = PVT_BASE + 'bg-[#08041a] border-purple-500';
+    prompt.innerText = 'REACTION TIME RECORDED'; result.innerText = `${rt} ms`;
+    document.getElementById('pvt-overall-score').innerText = `${rt} ms (${rt < 250 ? 'ALERT' : 'FATIGUED'})`;
+    logEvent('INFO', `PVT Assessment Complete: ${rt} ms latency score.`);
+  }
+}
+
+// MET clock
+let metSeconds = 5122782;
+setInterval(() => {
+  metSeconds += simSpeed;
+  const d = Math.floor(metSeconds / 86400), h = Math.floor((metSeconds % 86400) / 3600), m = Math.floor((metSeconds % 3600) / 60), s = metSeconds % 60;
+  document.getElementById('clock-met').innerText = `T+${String(d).padStart(3, '0')}:${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}, 1000);
+
+// Add crew
+function openAddCrewModal() { document.getElementById('add-crew-modal').classList.remove('hidden'); }
+function closeAddCrewModal() { document.getElementById('add-crew-modal').classList.add('hidden'); document.getElementById('add-crew-form').reset(); }
+
+async function submitNewCrew(event) {
+  event.preventDefault();
+  const payload = {
+    name: document.getElementById('new-name').value, role: document.getElementById('new-role').value,
+    age: document.getElementById('new-age').value, gender: document.getElementById('new-gender').value,
+    baseHr: document.getElementById('new-hr').value, vo2: document.getElementById('new-vo2').value,
+    sleep: document.getElementById('new-sleep').value, baseBp: document.getElementById('new-bp').value
+  };
+  try {
+    const response = await fetch('/api/add_crew', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (response.ok) { const result = await response.json(); updateCrewUI(result.crew, result.new_id); }
+    else throw new Error("Backend unavailable");
+  } catch (err) {
+    console.warn("API request failed, simulating backend locally for preview...", err);
+    const newId = payload.name.split(" ")[0].toLowerCase() + Date.now();
+    CREW_DATA[newId] = {
+      name: payload.name, role: payload.role,
+      image: `https://ui-avatars.com/api/?name=${encodeURIComponent(payload.name)}&background=0B0F19&color=00F0FF`,
+      age: `${payload.age} / ${payload.gender}`, sleep: `${payload.sleep} hrs`, vo2: `${payload.vo2} mL/kg`, cal: "2,500 kcal",
+      baseHr: parseFloat(payload.baseHr), baseSpo2: 98.5, baseTemp: 36.8, baseCo2: 0.42, baseRad: 12.4, atrophy: 10, iop: 16.0, cumulRad: 0.0
+    };
+    updateCrewUI(CREW_DATA, newId);
+  }
+  closeAddCrewModal();
+  logEvent('INFO', `NEW CREW MEMBER INITIALIZED: ${payload.name}`);
+}
+
+function updateCrewUI(updatedCrewData, newCrewId) {
+  Object.assign(CREW_DATA, updatedCrewData);
+  const select = document.getElementById('crew-select');
+  const opt = document.createElement('option');
+  opt.value = newCrewId;
+  opt.text = `${CREW_DATA[newCrewId].name} (${CREW_DATA[newCrewId].role.split('//')[0].trim()})`;
+  select.add(opt);
+  select.value = newCrewId;
+  select.dispatchEvent(new Event('change'));
+}
+
+// Engine loop (restarts when sim speed changes so the rate actually applies)
+let engineLoop = null;
+function restartEngineLoop() {
+  if (engineLoop) clearInterval(engineLoop);
+  engineLoop = setInterval(stepTelemetry, 1000 / simSpeed);
+}
+restartEngineLoop();
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('aegis7_logs');
+  if (saved) {
+    try { JSON.parse(saved).reverse().forEach(l => logEvent(l.type, l.text)); } catch (e) {}
+  } else {
+    logEvent('INFO', 'Aegis-7 Autonomous Telemetry Core initialised.');
+  }
+});
+</script>
+</body>
+</html>
